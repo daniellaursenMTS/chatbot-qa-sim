@@ -1,0 +1,292 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── Enums ──────────────────────────────────────────────────────────────
+
+enum WebhookMethod {
+  POST
+  PUT
+}
+
+enum RunStatus {
+  CREATED
+  RUNNING
+  EVALUATING
+  COMPLETED
+  FAILED
+}
+
+enum MessageRole {
+  USER
+  CHATBOT
+}
+
+enum MessageGenerationSource {
+  INITIAL
+  FOLLOW_UP
+  WEBHOOK_REPLY
+}
+
+enum Criterion {
+  ACCURACY
+  COMPLETENESS
+  HELPFULNESS
+  TONE
+  RELEVANCE
+  HALLUCINATION
+}
+
+enum CriterionStatus {
+  PASS
+  WARNING
+  FAIL
+}
+
+enum IssueSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum IssueCategory {
+  ACCURACY
+  COMPLETENESS
+  HELPFULNESS
+  TONE
+  RELEVANCE
+  HALLUCINATION
+}
+
+enum ExportType {
+  MARKDOWN
+  PDF
+}
+
+enum ExportStatus {
+  CREATED
+  FAILED
+}
+
+// ── Models ─────────────────────────────────────────────────────────────
+
+model WebhookConfig {
+  id        String        @id @default(uuid())
+  name      String
+  url       String
+  method    WebhookMethod @default(POST)
+  notes     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  runs SimulationRun[]
+
+  @@map("webhook_configs")
+}
+
+model Persona {
+  id                String   @id @default(uuid())
+  name              String
+  description       String
+  systemPrompt      String
+  skillFocus        String
+  ecommerceContext   Json?
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  runPersonas SimulationRunPersona[]
+
+  @@map("personas")
+}
+
+model SimulationRun {
+  id                     String    @id @default(uuid())
+  sessionId              String    @unique
+  status                 RunStatus @default(CREATED)
+  webhookConfigId        String?
+  webhookConfigSnapshot  Json
+  chatbotName            String
+  chatbotPurpose         String
+  testScenario           String
+  ecommerceCategory      String?
+  initialQuestionCount   Int
+  followUpQuestionCount  Int
+  targetBotResponseCount Int
+  openaiModel            String?
+  startedAt              DateTime?
+  completedAt            DateTime?
+  failedAt               DateTime?
+  errorMessage           String?
+  errorDetails           Json?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  webhookConfig WebhookConfig? @relation(fields: [webhookConfigId], references: [id], onDelete: SetNull)
+  personas      SimulationRunPersona[]
+  messages      Message[]
+  evaluation    Evaluation?
+  exports       Export[]
+  events        RunEvent[]
+
+  @@index([status])
+  @@index([webhookConfigId])
+  @@map("simulation_runs")
+}
+
+model SimulationRunPersona {
+  id              String @id @default(uuid())
+  runId           String
+  personaId       String?
+  orderIndex      Int
+  personaSnapshot Json
+
+  run             SimulationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  persona         Persona?      @relation(fields: [personaId], references: [id], onDelete: SetNull)
+  messages        Message[]
+  criteriaResults EvaluationCriterionResult[]
+  personaComments EvaluationPersonaComment[]
+  issuesRaised    EvaluationIssue[]
+
+  @@unique([runId, orderIndex])
+  @@index([personaId])
+  @@map("simulation_run_personas")
+}
+
+model Message {
+  id                     String                  @id @default(uuid())
+  runId                  String
+  personaRunId           String?
+  role                   MessageRole
+  sequenceIndex          Int
+  turnIndex              Int
+  content                String
+  generationSource       MessageGenerationSource?
+  webhookRequestPayload  Json?
+  webhookResponsePayload Json?
+  webhookStatusCode      Int?
+  webhookLatencyMs       Int?
+  webhookError           String?
+  createdAt              DateTime                @default(now())
+
+  run        SimulationRun         @relation(fields: [runId], references: [id], onDelete: Cascade)
+  personaRun SimulationRunPersona? @relation(fields: [personaRunId], references: [id], onDelete: SetNull)
+  issues     EvaluationIssue[]
+  criteriaResults EvaluationCriterionResult[]
+
+  @@unique([runId, sequenceIndex])
+  @@index([personaRunId])
+  @@map("messages")
+}
+
+model Evaluation {
+  id        String   @id @default(uuid())
+  runId     String   @unique
+  model     String
+  summary   String?
+  rawJson   Json
+  createdAt DateTime @default(now())
+
+  run             SimulationRun              @relation(fields: [runId], references: [id], onDelete: Cascade)
+  criteriaResults EvaluationCriterionResult[]
+  personaComments EvaluationPersonaComment[]
+  issues          EvaluationIssue[]
+
+  @@map("evaluations")
+}
+
+model EvaluationCriterionResult {
+  id                String          @id @default(uuid())
+  evaluationId      String
+  personaRunId      String?
+  criterion         Criterion
+  status            CriterionStatus
+  explanation       String
+  suggestedFix      String?
+  relatedMessageIds Json
+  relatedMessageId  String?
+  createdAt         DateTime        @default(now())
+
+  evaluation Evaluation            @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  personaRun SimulationRunPersona? @relation(fields: [personaRunId], references: [id], onDelete: SetNull)
+  relatedMessage Message?          @relation(fields: [relatedMessageId], references: [id], onDelete: SetNull)
+
+  @@index([evaluationId])
+  @@index([personaRunId])
+  @@index([relatedMessageId])
+  @@map("evaluation_criterion_results")
+}
+
+model EvaluationPersonaComment {
+  id             String   @id @default(uuid())
+  evaluationId   String
+  personaRunId   String?
+  personaName    String
+  overallComment String
+  whatWorked     Json
+  concerns       Json
+  createdAt      DateTime @default(now())
+
+  evaluation Evaluation            @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  personaRun SimulationRunPersona? @relation(fields: [personaRunId], references: [id], onDelete: SetNull)
+
+  @@index([evaluationId])
+  @@index([personaRunId])
+  @@map("evaluation_persona_comments")
+}
+
+model EvaluationIssue {
+  id                 String        @id @default(uuid())
+  evaluationId       String
+  messageId          String
+  raisedByPersonaRunId String?
+  severity           IssueSeverity
+  category           IssueCategory
+  explanation        String
+  suggestedFix       String
+  createdAt          DateTime      @default(now())
+
+  evaluation       Evaluation            @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  message          Message               @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  raisedByPersonaRun SimulationRunPersona? @relation(fields: [raisedByPersonaRunId], references: [id], onDelete: SetNull)
+
+  @@index([evaluationId])
+  @@index([messageId])
+  @@index([raisedByPersonaRunId])
+  @@map("evaluation_issues")
+}
+
+model Export {
+  id          String       @id @default(uuid())
+  runId       String
+  type        ExportType
+  status      ExportStatus @default(CREATED)
+  fileName    String
+  storagePath String?
+  contentText String?
+  error       String?
+  createdAt   DateTime     @default(now())
+
+  run SimulationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+  @@map("exports")
+}
+
+model RunEvent {
+  id        String   @id @default(uuid())
+  runId     String
+  type      String
+  message   String
+  data      Json?
+  createdAt DateTime @default(now())
+
+  run SimulationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+  @@map("run_events")
+}
