@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { errorResponse, notFoundError, ApiError } from "@/lib/utils/errors";
 import { executeSimulationRun } from "@/lib/simulation/engine";
+import { executeChipTestRun } from "@/lib/simulation/chipTestEngine";
 
 export async function POST(
   _request: NextRequest,
@@ -19,7 +20,11 @@ export async function POST(
       );
     }
 
-    await executeSimulationRun(id);
+    if (run.mode === "CHIP_TEST") {
+      await executeChipTestRun(id);
+    } else {
+      await executeSimulationRun(id);
+    }
 
     const updated = await prisma.simulationRun.findUnique({
       where: { id },

@@ -72,6 +72,11 @@ enum ExportStatus {
   FAILED
 }
 
+enum RunMode {
+  WEBHOOK
+  CHIP_TEST
+}
+
 // ── Models ─────────────────────────────────────────────────────────────
 
 model WebhookConfig {
@@ -108,8 +113,10 @@ model SimulationRun {
   id                     String    @id @default(uuid())
   sessionId              String    @unique
   status                 RunStatus @default(CREATED)
+  mode                   RunMode   @default(WEBHOOK)
   webhookConfigId        String?
   webhookConfigSnapshot  Json
+  chipTestConfig         Json?
   chatbotName            String
   chatbotPurpose         String
   testScenario           String
