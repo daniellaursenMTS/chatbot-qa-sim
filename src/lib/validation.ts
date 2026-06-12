@@ -79,3 +79,23 @@ export const createSimulationRunSchema = z
       path: ["followUpQuestionCount"],
     },
   );
+
+export const createChipTestRunSchema = z.object({
+  mode: z.literal("CHIP_TEST"),
+  chatbotName: z.string().min(1).default("PDP Chip Chatbot"),
+  chatbotPurpose: z
+    .string()
+    .min(1)
+    .default("Answer product questions via chips"),
+  testScenario: z.string().min(1, "Test scenario is required"),
+  ecommerceCategory: z.string().optional(),
+  chipTestConfig: z.object({
+    productIds: z
+      .array(z.number().int().positive())
+      .min(1, "At least 1 product ID required")
+      .max(50, "Maximum 50 product IDs allowed"),
+    generateOnDemand: z.boolean().default(true),
+    withReasoning: z.boolean().optional(),
+    timeoutMs: z.number().int().min(5000).max(120000).optional(),
+  }),
+});
