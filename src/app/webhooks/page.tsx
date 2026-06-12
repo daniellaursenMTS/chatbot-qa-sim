@@ -24,7 +24,7 @@ export default function WebhooksPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [testResult, setTestResult] = useState<TestResult | null>(null);
-  const [testingId, setTestingId] = useState<string | null>(null);
+  const [_testingId, setTestingId] = useState<string | null>(null);
 
   const fetchWebhooks = useCallback(async () => {
     setLoading(true);
@@ -45,6 +45,9 @@ export default function WebhooksPage() {
   }, []);
 
   useEffect(() => {
+    // Load webhooks on mount; setState calls happen asynchronously inside
+    // the fetcher, which is the standard data-loading pattern.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchWebhooks();
   }, [fetchWebhooks]);
 

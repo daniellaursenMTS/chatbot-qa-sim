@@ -53,6 +53,7 @@ export default function SimulationDetailPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reEvaluating, setReEvaluating] = useState(false);
+  const [reEvalError, setReEvalError] = useState<string | null>(null);
   const [errorDetailsOpen, setErrorDetailsOpen] = useState(false);
 
   const fetchRun = useCallback(async () => {
@@ -74,18 +75,25 @@ export default function SimulationDetailPage({
   }, [id]);
 
   useEffect(() => {
+    // Load simulation run on mount; setState calls happen asynchronously
+    // inside the fetcher, which is the standard data-loading pattern.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchRun();
   }, [fetchRun]);
 
   const handleReEvaluate = async () => {
     setReEvaluating(true);
+    setReEvalError(null);
     try {
       const res = await fetch(`/api/simulation-runs/${id}/evaluate`, { method: 'POST' });
       if (res.ok) {
         await fetchRun();
+      } else {
+        const body = await res.json().catch(() => null);
+        setReEvalError(body?.error?.message ?? `Re-evaluation failed (${res.status})`);
       }
     } catch (err) {
-      console.error('Re-evaluate error:', err);
+      setReEvalError(err instanceof Error ? err.message : 'Re-evaluation request failed');
     } finally {
       setReEvaluating(false);
     }
@@ -132,6 +140,21 @@ export default function SimulationDetailPage({
           <ExportButtons runId={id} />
         </div>
       </div>
+
+      {/* Re-evaluation error banner */}
+      {reEvalError && (
+        <div className="rounded-lg border border-danger-200 bg-danger-50 px-4 py-3 flex items-start justify-between gap-3">
+          <p className="text-sm text-danger-700">{reEvalError}</p>
+          <button
+            type="button"
+            className="text-danger-400 hover:text-danger-600 text-sm shrink-0"
+            onClick={() => setReEvalError(null)}
+            aria-label="Dismiss error"
+          >
+            &times;
+          </button>
+        </div>
+      )}
 
       {/* 1. Status Panel */}
       <Card>

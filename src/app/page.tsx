@@ -30,6 +30,9 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
+    // Fetch initial data on mount; fetchRuns updates state asynchronously via
+    // the returned promise, which is the intended data-loading pattern.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchRuns();
   }, [fetchRuns]);
 

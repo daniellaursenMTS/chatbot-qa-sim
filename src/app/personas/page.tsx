@@ -33,6 +33,9 @@ export default function PersonasPage() {
   }, []);
 
   useEffect(() => {
+    // Load personas on mount; setState calls happen asynchronously inside the
+    // fetcher, which is the standard data-loading pattern.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPersonas();
   }, [fetchPersonas]);
 
