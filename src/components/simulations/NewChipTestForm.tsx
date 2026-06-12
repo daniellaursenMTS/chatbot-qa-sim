@@ -8,7 +8,6 @@ import Textarea from '@/components/ui/Textarea';
 import Card from '@/components/ui/Card';
 
 interface FormErrors {
-  apiBaseUrl?: string;
   productIds?: string;
   testScenario?: string;
   chatbotName?: string;
@@ -23,7 +22,6 @@ const DEFAULT_PRODUCT_IDS =
 export default function NewChipTestForm() {
   const router = useRouter();
 
-  const [apiBaseUrl, setApiBaseUrl] = useState('http://8.233.199.50');
   const [productIdsText, setProductIdsText] = useState(DEFAULT_PRODUCT_IDS);
   const [generateOnDemand, setGenerateOnDemand] = useState(true);
   const [chatbotName, setChatbotName] = useState('PDP Chip Chatbot');
@@ -52,12 +50,6 @@ export default function NewChipTestForm() {
 
   function validate(): boolean {
     const newErrors: FormErrors = {};
-
-    try {
-      new URL(apiBaseUrl);
-    } catch {
-      newErrors.apiBaseUrl = 'Must be a valid URL';
-    }
 
     if (parsedIds.length === 0) {
       newErrors.productIds = 'At least 1 valid product ID required';
@@ -92,7 +84,6 @@ export default function NewChipTestForm() {
       testScenario: testScenario.trim(),
       ecommerceCategory: ecommerceCategory.trim() || undefined,
       chipTestConfig: {
-        apiBaseUrl: apiBaseUrl.trim(),
         productIds: parsedIds,
         generateOnDemand,
         withReasoning: false,
@@ -193,14 +184,6 @@ export default function NewChipTestForm() {
           API Configuration
         </h2>
         <div className="space-y-4">
-          <Input
-            label="API Base URL"
-            placeholder="http://8.233.199.50"
-            value={apiBaseUrl}
-            onChange={(e) => setApiBaseUrl(e.target.value)}
-            error={errors.apiBaseUrl}
-            required
-          />
           <div>
             <Textarea
               label="Product IDs"

@@ -90,7 +90,6 @@ export const createChipTestRunSchema = z.object({
   testScenario: z.string().min(1, "Test scenario is required"),
   ecommerceCategory: z.string().optional(),
   chipTestConfig: z.object({
-    apiBaseUrl: z.string().url("Must be a valid URL"),
     productIds: z
       .array(z.number().int().positive())
       .min(1, "At least 1 product ID required")

@@ -11,7 +11,6 @@ import {
 } from "@/lib/chip-api/chipApiClient";
 
 interface ChipTestConfig {
-  apiBaseUrl: string;
   productIds: number[];
   generateOnDemand: boolean;
   withReasoning?: boolean;
@@ -44,8 +43,12 @@ export async function executeChipTestRun(runId: string): Promise<void> {
     status: "RUNNING",
   });
 
+  if (!env.CHIP_API_BASE_URL) {
+    throw new Error("CHIP_API_BASE_URL environment variable is not configured");
+  }
+
   const apiConfig: ChipApiConfig = {
-    baseUrl: chipTestConfig.apiBaseUrl,
+    baseUrl: env.CHIP_API_BASE_URL,
     timeoutMs: chipTestConfig.timeoutMs ?? env.WEBHOOK_TIMEOUT_MS,
   };
 
@@ -59,12 +62,11 @@ export async function executeChipTestRun(runId: string): Promise<void> {
   let turnIndex = 0;
 
   try {
-    // Create a single session for the whole run
-    await logRunEvent(runId, "CREATING_SESSION", "Creating chat session");
-    const sessionId = await createChatSession(apiConfig.baseUrl);
-    await logRunEvent(runId, "SESSION_CREATED", `Session: ${sessionId}`);
-
     for (const productId of chipTestConfig.productIds) {
+      // Create a fresh session for each product
+      await logRunEvent(runId, "CREATING_SESSION", `Creating chat session for product ${productId}`);
+      const sessionId = await createChatSession(apiConfig.baseUrl, apiConfig.timeoutMs);
+      await logRunEvent(runId, "SESSION_CREATED", `Session: ${sessionId} (product ${productId})`);
       // Fetch chips for this product
       await logRunEvent(
         runId,
